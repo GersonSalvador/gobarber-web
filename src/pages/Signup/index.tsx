@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from 'react';
+import { Link, useHistory } from 'react-router-dom';
 import { FiArrowLeft, FiMail, FiUser, FiLock } from 'react-icons/fi';
 import { FormHandles } from '@unform/core';
 import { Form } from '@unform/web';
@@ -7,6 +8,9 @@ import * as Yup from 'yup';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { Container, AnimationContainer, Background } from './styles';
+import api from '../../services/api';
+
+import { useToast } from '../../hooks/Toast';
 
 import getValidationErrors from '../../utils/getValidationErrors';
 import logoImg from '../../assets/logo.svg';
@@ -17,31 +21,58 @@ interface SignUpFormData {
   password: string;
 }
 
+interface SignUpFormData {
+  name: string;
+  email: string;
+  password: string;
+}
+
 const SignUp: React.FC = () => {
   const formRef = useRef<FormHandles>(null);
+  const { addToast } = useToast();
+  const history = useHistory();
 
-  const handleSubmit = useCallback(async (data: SignUpFormData) => {
-    try {
-      formRef.current?.setErrors({});
-      const schema = Yup.object().shape({
-        name: Yup.string().required('Required Name'),
-        email: Yup.string()
-          .required('Required E-mail')
-          .email('Enter a valid email'),
-        password: Yup.string().min(12, '12 characters length minimum'),
-      });
+  const handleSubmit = useCallback(
+    async (data: SignUpFormData) => {
+      try {
+        formRef.current?.setErrors({});
+        const schema = Yup.object().shape({
+          name: Yup.string().required('Required Name'),
+          email: Yup.string()
+            .required('Required E-mail')
+            .email('Enter a valid email'),
+          password: Yup.string().min(12, '12 characters length minimum'),
+        });
 
-      await schema.validate(data, {
-        abortEarly: false,
-      });
-    } catch (err) {
-      console.log(err);
+        await schema.validate(data, {
+          abortEarly: false,
+        });
 
-      const errors = getValidationErrors(err);
+        await api.post('/users', data);
 
-      formRef.current?.setErrors(errors);
-    }
-  }, []);
+        history.push('/');
+
+        addToast({
+          type: 'success',
+          title: 'Congrats!',
+          description: "You're an official GoBarber user, now!",
+        });
+      } catch (err) {
+        console.log(err);
+
+        const errors = getValidationErrors(err);
+
+        formRef.current?.setErrors(errors);
+
+        addToast({
+          type: 'error',
+          title: 'Oh no!',
+          description: "We cound't create your account. Plase try again later.",
+        });
+      }
+    },
+    [addToast, history],
+  );
 
   return (
     <Container>
@@ -63,10 +94,10 @@ const SignUp: React.FC = () => {
           />
           <Button type="submit">SignUp</Button>
 
-          <a href="/">
+          <Link to="/">
             <FiArrowLeft />
             Back to Login
-          </a>
+          </Link>
         </Form>
       </AnimationContainer>
     </Container>
